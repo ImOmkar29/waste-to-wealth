@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AppNavbar from './components/Navbar';
@@ -7,12 +6,14 @@ import Footer from './components/Footer';
 import LoginSignup from './components/LoginSignup';
 import WasteCollectionForm from './components/WasteCollectionForm';
 import UpcycledProducts from './components/UpcycledProducts';
+import Marketplace from './components/Marketplace';
 import ProductDetails from './components/ProductDetails';
 import { auth, db } from './firebaseConfig';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import UserDashboard from './components/UserDashboard';
-import ProfileManagement from './components/ProfileManagement'; 
+import ProfileManagement from './components/ProfileManagement';
+import SellerForm from './components/SellerForm'; // Import SellerForm
 
 const App = () => {
   const [user, loading] = useAuthState(auth);
@@ -27,7 +28,7 @@ const App = () => {
           if (userDoc.exists()) {
             const role = userDoc.data().role || 'user';
             setUserRole(role);
-            console.log('Fetched user role:', role); // Add this line
+            console.log('Fetched user role:', role);
           } else {
             setUserRole('user');
             console.log('User document does not exist. Defaulting to "user".');
@@ -56,7 +57,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginSignup />} />
-        <Route path="/upcycled-products" element={<UpcycledProducts />} />
+        <Route path="/upcycled-products" element={<Marketplace />} />
         <Route path="/product/:id" element={<ProductDetails />} />
         <Route path="/profile" element={<ProfileManagement />} />
 
@@ -72,6 +73,16 @@ const App = () => {
         <Route 
           path="/waste-request" 
           element={<WasteCollectionForm />} 
+        />
+
+        {/* Add Private Route for SellerForm */}
+        <Route 
+          path="/sell-product" 
+          element={
+            <PrivateRoute>
+              <SellerForm />
+            </PrivateRoute>
+          } 
         />
       </Routes>
       <Footer />

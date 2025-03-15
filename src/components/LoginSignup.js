@@ -1,7 +1,7 @@
-// src/components/LoginSignup.js
 import React, { useState } from 'react';
-import { auth, googleProvider } from '../firebaseConfig';
+import { auth, googleProvider, db } from '../firebaseConfig';
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Form, Card, Container } from 'react-bootstrap';
@@ -25,7 +25,15 @@ const LoginSignup = () => {
     e.preventDefault();
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // 🔹 Store user role in Firestore
+        await setDoc(doc(db, 'users', user.uid), {
+          email: user.email,
+          role: 'user' // Default role for new users
+        });
+
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -37,7 +45,13 @@ const LoginSignup = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      const user = userCredential.user;
+
+      // 🔹 Store user role in Firestore if signing in for the first time
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, { email: user.email, role: 'user' }, { merge: true });
+
       navigate('/dashboard');
     } catch (err) {
       setError(err.message);

@@ -14,6 +14,7 @@ const WasteCollectionForm = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -24,43 +25,43 @@ const WasteCollectionForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const { name, address, wasteType, quantity, contact } = formData;
 
-    // Validation checks remain unchanged
     if (!name || !address || !wasteType || !quantity || !contact) {
       setError('All fields are required.');
+      setLoading(false);
       return;
     }
-    if (isNaN(quantity) || quantity <= 0) {
+    if (isNaN(quantity) || parseFloat(quantity) <= 0) {
       setError('Quantity must be a valid positive number.');
+      setLoading(false);
       return;
     }
     if (!/^[0-9]{10}$/.test(contact)) {
       setError('Contact number must be a valid 10-digit number.');
+      setLoading(false);
       return;
     }
 
     try {
-      // Adding data to Firestore with additional timestamp field
-      await addDoc(collection(db, 'wasteRequests'), {  // Updated collection name
+      await addDoc(collection(db, 'wasteRequests'), {
         name,
         address,
         wasteType,
         quantity: parseFloat(quantity),
         contact,
-        createdAt: Timestamp.now() // Timestamp to track request creation time
+        createdAt: Timestamp.now()
       });
 
       setSuccess('Request submitted successfully!');
       setFormData({ name: '', address: '', wasteType: '', quantity: '', contact: '' });
-
-      // Navigate after a short delay (optional)
       setTimeout(() => navigate('/dashboard'), 2000);
-
     } catch (err) {
-      // Handle any errors during Firestore request
       console.error('Error adding document:', err);
       setError('Failed to submit request. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -130,8 +131,8 @@ const WasteCollectionForm = () => {
             />
           </Form.Group>
           
-          <Button variant="dark" type="submit" className="w-100">
-            Submit Request
+          <Button variant="dark" type="submit" className="w-100" disabled={loading}>
+            {loading ? 'Submitting...' : 'Submit Request'}
           </Button>
         </Form>
       </Card>

@@ -59,8 +59,8 @@ const AppNavbar = () => {
                 <NavDropdown.Item as={Link} to="/waste-request">
                   <FaTrash className="me-2" /> Waste Collection Request
                 </NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/upcycled-products">
-                  <FaStore className="me-2" /> Upcycled Products
+                <NavDropdown.Item as={Link} to="/marketplace">
+                  <FaStore className="me-2" /> Marketplace
                 </NavDropdown.Item>
               </NavDropdown>
 
