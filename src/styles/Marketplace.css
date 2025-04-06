@@ -1,0 +1,105 @@
+/* General Marketplace Styles */
+.marketplace {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* Filters Section */
+.marketplace .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.marketplace .filters input, 
+.marketplace .filters select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.marketplace .filters input {
+    width: 250px;
+}
+
+.marketplace .filters select {
+    width: 180px;
+    cursor: pointer;
+}
+
+/* Price Range Slider */
+.marketplace .price-slider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.marketplace .price-slider input[type='range'] {
+    width: 150px;
+    cursor: pointer;
+}
+
+/* Product Card Styling */
+.marketplace .product-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+    padding: 15px;
+    background-color: #fff;
+}
+
+.marketplace .product-card:hover {
+    transform: scale(1.02);
+}
+
+/* Image Styling */
+.marketplace .image-container {
+    height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 10px;
+    background-color: #fff;
+    margin-bottom: 15px;
+}
+
+.marketplace .product-image {
+    width: auto;
+    max-width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 10px;
+}
+
+/* Description and Price */
+.marketplace .description {
+    font-size: 0.9rem;
+    color: #555;
+    flex-grow: 1;
+}
+
+.marketplace .price {
+    font-weight: bold;
+    color: #28a745;
+    font-size: 1.1rem;
+    margin: 10px 0;
+}
+
+/* Button Styling */
+.marketplace .btn-block {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 5px;
+}
+
+

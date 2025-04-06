@@ -5,7 +5,6 @@ import LandingPage from './components/LandingPage';
 import Footer from './components/Footer';
 import LoginSignup from './components/LoginSignup';
 import WasteCollectionForm from './components/WasteCollectionForm';
-import UpcycledProducts from './components/UpcycledProducts';
 import Marketplace from './components/Marketplace';
 import ProductDetails from './components/ProductDetails';
 import { auth, db } from './firebaseConfig';
@@ -13,7 +12,12 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import UserDashboard from './components/UserDashboard';
 import ProfileManagement from './components/ProfileManagement';
-import SellerForm from './components/SellerForm'; // Import SellerForm
+import SellerForm from './components/SellerForm';
+import AdminDashboard from './components/AdminDashboard';
+import { ToastContainer } from 'react-toastify';
+import Services from './components/Services';
+import Contact from './components/Contact';
+import AboutUs from './components/AboutUs'; 
 
 const App = () => {
   const [user, loading] = useAuthState(auth);
@@ -51,15 +55,31 @@ const App = () => {
     return children;
   };
 
+  const AdminRoute = ({ children }) => {
+    if (!user || userRole !== 'admin') return <Navigate to="/" />;
+    return children;
+  };
+
   return (
     <Router>
       <AppNavbar />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginSignup />} />
-        <Route path="/upcycled-products" element={<Marketplace />} />
+        <Route path="/marketplace" element={<Marketplace />} />
         <Route path="/product/:id" element={<ProductDetails />} />
         <Route path="/profile" element={<ProfileManagement />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/about-us" element={<AboutUs />} /> {/* Add AboutUs Route */}
+
+        {/* Routes for Checkout Flow
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/order-summary" element={<OrderSummary />} />
+        <Route path="/payment" element={<PaymentForm />} />
+        <Route path="/shipping" element={<ShippingForm />} /> */}
+
+        {/* Services Page */}
+        <Route path="/services" element={<Services />} />
 
         <Route 
           path="/user-dashboard" 
@@ -75,7 +95,6 @@ const App = () => {
           element={<WasteCollectionForm />} 
         />
 
-        {/* Add Private Route for SellerForm */}
         <Route 
           path="/sell-product" 
           element={
@@ -84,8 +103,19 @@ const App = () => {
             </PrivateRoute>
           } 
         />
+
+        {/* Admin Route */}
+        <Route 
+          path="/admin-dashboard" 
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
       </Routes>
       <Footer />
+      <ToastContainer position="top-right" autoClose={3000} />
     </Router>
   );
 };

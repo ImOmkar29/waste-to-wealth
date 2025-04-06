@@ -1,0 +1,140 @@
+/* Services Page Styles */
+.services-page {
+    padding: 80px 0;
+    background-color: #f8f9fa; /* Light background for the entire page */
+  }
+  
+  .services-page h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50; /* Dark blue for headings */
+    margin-bottom: 20px;
+  }
+  
+  .services-page .lead {
+    font-size: 1.25rem;
+    color: #555;
+    margin-bottom: 40px;
+  }
+  
+  /* Card Styles */
+  .services-page .card {
+    border: none;
+    border-radius: 10px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background-color: #fff; /* White background for cards */
+  }
+  
+  .services-page .card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .services-page .card-body {
+    padding: 30px;
+    text-align: center;
+  }
+  
+  .services-page .card h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #2c3e50; /* Dark blue for card headings */
+    margin-bottom: 20px;
+  }
+  
+  .services-page .card p {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 20px;
+  }
+  
+  .services-page .card ul {
+    text-align: left;
+    padding-left: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .services-page .card ul li {
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 10px;
+  }
+  
+  .services-page .card ul li::before {
+    content: "•";
+    color: #28a745; /* Green for bullet points */
+    font-weight: bold;
+    display: inline-block;
+    width: 1em;
+    margin-left: -1em;
+  }
+  
+  /* Button Styles */
+  .services-page .btn {
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 10px 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+  }
+  
+  .services-page .btn-primary {
+    background-color: #28a745; /* Green for primary buttons */
+    border-color: #28a745;
+  }
+  
+  .services-page .btn-primary:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    transform: translateY(-2px);
+  }
+  
+  .services-page .btn-warning {
+    background-color: #ffc107; /* Yellow for marketplace buttons */
+    border-color: #ffc107;
+  }
+  
+  .services-page .btn-warning:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+    transform: translateY(-2px);
+  }
+  
+  /* Icon Styles */
+  .services-page .fa-trash,
+  .services-page .fa-recycle,
+  .services-page .fa-shopping-cart {
+    margin-bottom: 20px;
+  }
+  
+  .services-page .fa-trash {
+    color: #28a745; /* Green for waste collection icon */
+  }
+  
+  .services-page .fa-recycle {
+    color: #17a2b8; /* Teal for recycling icon */
+  }
+  
+  .services-page .fa-shopping-cart {
+    color: #ffc107; /* Yellow for marketplace icon */
+  }
+  
+  /* Responsive Styles */
+  @media (max-width: 768px) {
+    .services-page h1 {
+      font-size: 2rem;
+    }
+  
+    .services-page .card h2 {
+      font-size: 1.5rem;
+    }
+  
+    .services-page .card p {
+      font-size: 0.9rem;
+    }
+  
+    .services-page .btn {
+      font-size: 0.9rem;
+      padding: 8px 16px;
+    }
+  }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { auth, googleProvider, db } from '../firebaseConfig';
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Form, Card, Container } from 'react-bootstrap';
@@ -24,20 +24,39 @@ const LoginSignup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      let user;
       if (isSignUp) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        user = userCredential.user;
 
-        // 🔹 Store user role in Firestore
+        // Store user role in Firestore with a default 'user' role
         await setDoc(doc(db, 'users', user.uid), {
           email: user.email,
           role: 'user' // Default role for new users
         });
-
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        user = userCredential.user;
       }
-      navigate('/dashboard');
+
+      // Fetch user role from Firestore after login
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const userRole = userSnap.data().role;
+        if (userRole === 'admin') {
+          // Redirect to Admin Dashboard
+          navigate('/admin-dashboard');
+        } else {
+          // Redirect to User Dashboard
+          navigate('/user-dashboard');
+        }
+      }
+
+      // Force refresh of the token to ensure we get the updated role
+      await user.getIdToken(true);
+
     } catch (err) {
       setError(err.message);
     }
@@ -48,11 +67,33 @@ const LoginSignup = () => {
       const userCredential = await signInWithPopup(auth, googleProvider);
       const user = userCredential.user;
 
-      // 🔹 Store user role in Firestore if signing in for the first time
+      // Store user role in Firestore if signing in for the first time
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, { email: user.email, role: 'user' }, { merge: true });
 
-      navigate('/dashboard');
+      // Ensure we are merging the role and not overwriting it
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        await setDoc(userRef, { email: user.email, role: 'user' });
+      } else {
+        await setDoc(userRef, { email: user.email }, { merge: true });
+      }
+
+      // Fetch user role from Firestore after Google login
+      const userRoleSnap = await getDoc(userRef);
+      if (userRoleSnap.exists()) {
+        const userRole = userRoleSnap.data().role;
+        if (userRole === 'admin') {
+          // Redirect to Admin Dashboard
+          navigate('/admin-dashboard');
+        } else {
+          // Redirect to User Dashboard
+          navigate('/user-dashboard');
+        }
+      }
+
+      // Force refresh of the token to ensure we get the updated role
+      await user.getIdToken(true);
+
     } catch (err) {
       setError(err.message);
     }

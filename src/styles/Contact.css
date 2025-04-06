@@ -1,0 +1,108 @@
+/* Contact Page Styles */
+.contact-page {
+    padding: 80px 0;
+    background-color: #f8f9fa; /* Light background for the entire page */
+  }
+  
+  .contact-page h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50; /* Dark blue for headings */
+    margin-bottom: 20px;
+  }
+  
+  .contact-page .lead {
+    font-size: 1.25rem;
+    color: #555;
+    margin-bottom: 40px;
+  }
+  
+  /* Contact Form Styles */
+  .contact-page .contact-form {
+    background-color: #fff; /* White background for the form */
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .contact-page .form-control {
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    font-size: 1rem;
+    margin-bottom: 20px;
+  }
+  
+  .contact-page .form-control:focus {
+    border-color: #28a745; /* Green for focus state */
+    box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+  }
+  
+  .contact-page .form-label {
+    font-weight: 500;
+    color: #2c3e50; /* Dark blue for labels */
+  }
+  
+  .contact-page .btn-primary {
+    background-color: #28a745; /* Green for primary buttons */
+    border-color: #28a745;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 10px 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+  }
+  
+  .contact-page .btn-primary:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    transform: translateY(-2px);
+  }
+  
+  /* Contact Info Styles */
+  .contact-page .contact-info {
+    background-color: #fff; /* White background for contact info */
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .contact-page .contact-info h3 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #2c3e50; /* Dark blue for headings */
+    margin-bottom: 20px;
+  }
+  
+  .contact-page .contact-info p {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 15px;
+  }
+  
+  .contact-page .contact-info .icon {
+    font-size: 1.5rem;
+    color: #28a745; /* Green for icons */
+    margin-right: 10px;
+  }
+  
+  /* Responsive Styles */
+  @media (max-width: 768px) {
+    .contact-page h1 {
+      font-size: 2rem;
+    }
+  
+    .contact-page .lead {
+      font-size: 1rem;
+    }
+  
+    .contact-page .contact-form,
+    .contact-page .contact-info {
+      padding: 20px;
+    }
+  
+    .contact-page .btn-primary {
+      font-size: 0.9rem;
+      padding: 8px 16px;
+    }
+  }

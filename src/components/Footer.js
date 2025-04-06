@@ -19,7 +19,7 @@ const Footer = () => {
         <Row className="mb-3">
           <Col>
             <ul className="list-unstyled">
-              <li><a href="/about" className="text-white">About Us</a></li>
+              <li><a href="/about-us" className="text-white">About Us</a></li>
               <li><a href="/contact" className="text-white">Contact</a></li>
               <li><a href="/privacy-policy" className="text-white">Privacy Policy</a></li>
             </ul>

@@ -1,0 +1,21 @@
+.about-us-page {
+    padding-top: 2rem;
+  }
+  
+  .about-us-page .card {
+    border: none;
+    border-radius: 10px;
+    transition: transform 0.3s ease;
+  }
+  
+  .about-us-page .card:hover {
+    transform: translateY(-10px);
+  }
+  
+  .about-us-page .card-title {
+    color: #2c3e50;
+  }
+  
+  .about-us-page .card-text {
+    color: #34495e;
+  }
