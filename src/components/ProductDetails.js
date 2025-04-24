@@ -86,7 +86,7 @@ const ProductDetails = () => {
               <h4 className="product-price">₹{product.price}</h4>
 
               <div className="delivery-info">
-                <p>✅ Free Shipping | 🚀 Fast Delivery</p>
+                <p>✅ Free Shipping | 🚀 Easy Returns</p>
               </div>
 
               {/* Add Razorpay Buy Now Button */}

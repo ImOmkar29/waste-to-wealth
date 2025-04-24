@@ -17,7 +17,9 @@ import AdminDashboard from './components/AdminDashboard';
 import { ToastContainer } from 'react-toastify';
 import Services from './components/Services';
 import Contact from './components/Contact';
-import AboutUs from './components/AboutUs'; 
+import AboutUs from './components/AboutUs';
+import WasteCollectionFormTest from './components/WasteCollectionFormTest';
+import PasswordReset from './components/PasswordReset'; // Add this import
 
 const App = () => {
   const [user, loading] = useAuthState(auth);
@@ -64,23 +66,27 @@ const App = () => {
     <Router>
       <AppNavbar />
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginSignup />} />
+        <Route path="/password-reset" element={<PasswordReset />} /> {/* Added route */}
         <Route path="/marketplace" element={<Marketplace />} />
         <Route path="/product/:id" element={<ProductDetails />} />
-        <Route path="/profile" element={<ProfileManagement />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/about-us" element={<AboutUs />} /> {/* Add AboutUs Route */}
-
-        {/* Routes for Checkout Flow
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/order-summary" element={<OrderSummary />} />
-        <Route path="/payment" element={<PaymentForm />} />
-        <Route path="/shipping" element={<ShippingForm />} /> */}
-
-        {/* Services Page */}
+        <Route path="/about-us" element={<AboutUs />} />
         <Route path="/services" element={<Services />} />
+        <Route path="/test" element={<WasteCollectionFormTest />} />
 
+        {/* Protected Routes */}
+        <Route 
+          path="/profile" 
+          element={
+            <PrivateRoute>
+              <ProfileManagement />
+            </PrivateRoute>
+          } 
+        />
+        
         <Route 
           path="/user-dashboard" 
           element={
@@ -89,12 +95,16 @@ const App = () => {
             </PrivateRoute>
           }
         />
-
+        
         <Route 
           path="/waste-request" 
-          element={<WasteCollectionForm />} 
+          element={
+            <PrivateRoute>
+              <WasteCollectionForm />
+            </PrivateRoute>
+          } 
         />
-
+        
         <Route 
           path="/sell-product" 
           element={
@@ -113,6 +123,9 @@ const App = () => {
             </AdminRoute>
           }
         />
+
+        {/* Fallback Route */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       <Footer />
       <ToastContainer position="top-right" autoClose={3000} />

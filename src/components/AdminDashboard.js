@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Tabs, Tab, Container, Row, Col, Card, Table, Spinner, Badge, Button, Alert, Form, Modal } from "react-bootstrap";
 import { auth, db } from "../firebaseConfig";
-import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, query, where } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
 const AdminDashboard = () => {
   const [wasteRequests, setWasteRequests] = useState([]);
@@ -11,113 +11,98 @@ const AdminDashboard = () => {
   const [error, setError] = useState("");
   const [adminName, setAdminName] = useState("");
 
-  // New State Variables
+  // State for waste requests management
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [pickupDate, setPickupDate] = useState("");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [collectors, setCollectors] = useState([]);
+  const [assignedCollector, setAssignedCollector] = useState("");
   const requestsPerPage = 10;
 
   const user = auth.currentUser;
 
-  // ✅ Fetch admin details
+  // Fetch all data
   useEffect(() => {
-    const fetchAdminDetails = async () => {
-      if (user) {
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setAdminName(userDoc.data().name || user.email);
-        }
-      }
-    };
-    fetchAdminDetails();
-  }, [user]);
-
-  // ✅ Fetch data (waste requests, products, users)
-  useEffect(() => {
-    const fetchWasteRequests = async () => {
+    const fetchData = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "wasteRequests"));
-        const requests = querySnapshot.docs.map((doc) => ({
+        // Fetch waste requests with requester info
+        const requestsSnapshot = await getDocs(collection(db, "wasteRequests"));
+        const requests = requestsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
+          requesterName: doc.data().name || doc.data().requesterName || "",
+          requesterPhone: doc.data().contact || doc.data().requesterContact || ""
         }));
         setWasteRequests(requests);
-      } catch (error) {
-        console.error("Error fetching waste requests:", error);
-      }
-    };
 
-    const fetchProducts = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "upcycledProducts"));
-        const productList = querySnapshot.docs.map((doc) => ({
+        // Fetch products
+        const productsSnapshot = await getDocs(collection(db, "upcycledProducts"));
+        setProducts(productsSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
-        }));
-        setProducts(productList);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        setError("Failed to load products");
-      }
-    };
+          ...doc.data()
+        })));
 
-    const fetchUsers = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "users"));
-        const userList = querySnapshot.docs.map((doc) => ({
+        // Fetch users
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const userList = usersSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
+          ...doc.data()
         }));
         setUsers(userList);
+        setCollectors(userList.filter(user => user.role === "collector"));
+
+        // Fetch admin details
+        if (user) {
+          const userDocRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            setAdminName(userDoc.data().name || user.email);
+          }
+        }
       } catch (error) {
-        console.error("Error fetching users:", error);
-        setError("Failed to load users");
+        console.error("Error fetching data:", error);
+        setError("Failed to load data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchWasteRequests();
-    fetchProducts();
-    fetchUsers();
-  }, []);
+    fetchData();
+  }, [user]);
 
-  // ✅ Send Notification Function
+  // Notification function
   const sendNotification = async (userId, message, additionalData = {}) => {
     try {
-      const notificationRef = collection(db, "notifications");
-      await addDoc(notificationRef, {
+      await addDoc(collection(db, "notifications"), {
         userId,
         message,
-        ...additionalData, // Include additional data like pickup date
+        ...additionalData,
         timestamp: serverTimestamp(),
         isRead: false,
       });
-      console.log("Notification sent successfully!");
     } catch (error) {
       console.error("Error sending notification:", error);
     }
   };
 
-  // ✅ Handle product status update with notifications
+  // Product management functions
   const updateProductStatus = async (productId, newStatus) => {
     try {
       const productRef = doc(db, "upcycledProducts", productId);
       await updateDoc(productRef, { status: newStatus });
 
       const product = products.find((p) => p.id === productId);
-
       if (product) {
         await sendNotification(
           product.sellerId,
-          `Your product "${product.name}" was ${newStatus.toLowerCase()} ✅`
+          `Your product "${product.name}" was ${newStatus.toLowerCase()} ✅`,
+          { productId, status: newStatus }
         );
       }
 
-      setProducts((prevProducts) =>
+      setProducts(prevProducts =>
         prevProducts.map((product) =>
           product.id === productId ? { ...product, status: newStatus } : product
         )
@@ -128,16 +113,15 @@ const AdminDashboard = () => {
     }
   };
 
-  // ✅ Handle product deletion with notifications
   const deleteProduct = async (productId) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
         const product = products.find((p) => p.id === productId);
-
         if (product) {
           await sendNotification(
             product.sellerId,
-            `Your product "${product.name}" was removed 🗑️`
+            `Your product "${product.name}" was removed 🗑️`,
+            { productId }
           );
         }
 
@@ -150,145 +134,151 @@ const AdminDashboard = () => {
     }
   };
 
-  // ✅ Handle status update for Waste Requests with notifications
+  // Waste request management functions
   const handleWasteStatusChange = async (requestId, newStatus) => {
-    setWasteRequests((prevRequests) =>
-      prevRequests.map((req) =>
+    try {
+      await updateDoc(doc(db, "wasteRequests", requestId), { status: newStatus });
+      setWasteRequests(prev => prev.map(req => 
         req.id === requestId ? { ...req, status: newStatus } : req
-      )
-    );
+      ));
 
-    try {
-      const requestDocRef = doc(db, "wasteRequests", requestId);
-      await updateDoc(requestDocRef, { status: newStatus });
-
-      // Find the request to get the user ID
-      const request = wasteRequests.find((req) => req.id === requestId);
+      const request = wasteRequests.find(req => req.id === requestId);
       if (request) {
-        // Send notification to the user
         await sendNotification(
-          request.userId, // Assuming the request has a userId field
-          `Your waste request status has been updated to: ${newStatus}`,
-          { requestId, status: newStatus } // Additional data
+          request.userId,
+          `Your waste request status updated to: ${newStatus}`,
+          { requestId, status: newStatus }
         );
       }
     } catch (error) {
-      console.error("Error updating request status:", error);
+      console.error("Error updating status:", error);
     }
   };
 
-  // ✅ Handle Ban/Unban action
-  const toggleBanStatus = async (userId, isBanned) => {
-    try {
-      const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, { isBanned: !isBanned });
-
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === userId ? { ...user, isBanned: !isBanned } : user
-        )
-      );
-    } catch (error) {
-      console.error("Error updating ban status:", error);
-      setError("Failed to update ban status");
-    }
-  };
-
-  // ✅ Handle Role Change action
-  const handleRoleChange = async (userId, newRole) => {
-    try {
-      const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, { role: newRole });
-
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === userId ? { ...user, role: newRole } : user
-        )
-      );
-    } catch (error) {
-      console.error("Error updating role:", error);
-      setError("Failed to update role");
-    }
-  };
-
-  // ✅ Schedule Pickup Function with notifications
   const schedulePickup = async (requestId) => {
-    if (!pickupDate) {
-      alert("Please select a pickup date.");
-      return;
-    }
-
+    if (!pickupDate) return alert("Please select pickup date");
+    
     try {
-      const requestDocRef = doc(db, "wasteRequests", requestId);
-      await updateDoc(requestDocRef, { pickupDate, status: "Scheduled" });
-      setWasteRequests((prevRequests) =>
-        prevRequests.map((req) =>
-          req.id === requestId ? { ...req, pickupDate, status: "Scheduled" } : req
-        )
-      );
+      await updateDoc(doc(db, "wasteRequests", requestId), { 
+        pickupDate, 
+        status: "Scheduled" 
+      });
+      
+      setWasteRequests(prev => prev.map(req => 
+        req.id === requestId ? { ...req, pickupDate, status: "Scheduled" } : req
+      ));
 
-      // Find the request to get the user ID
-      const request = wasteRequests.find((req) => req.id === requestId);
+      const request = wasteRequests.find(req => req.id === requestId);
       if (request) {
-        // Send notification to the user
         await sendNotification(
-          request.userId, // Assuming the request has a userId field
-          `Your waste pickup has been scheduled for ${pickupDate}.`,
-          { requestId, pickupDate, status: "Scheduled" } // Additional data
+          request.userId,
+          `Pickup scheduled for ${pickupDate}`,
+          { requestId, pickupDate, status: "Scheduled" }
         );
       }
-
-      alert("Pickup scheduled successfully!");
+      alert("Pickup scheduled!");
     } catch (error) {
       console.error("Error scheduling pickup:", error);
-      alert("Failed to schedule pickup.");
+      alert("Failed to schedule pickup");
     }
   };
 
-  // ✅ Delete Waste Request Function with notifications
-  const deleteWasteRequest = async (requestId) => {
-    if (window.confirm("Are you sure you want to delete this waste request?")) {
-      try {
-        const request = wasteRequests.find((req) => req.id === requestId);
+  const assignCollector = async (requestId) => {
+    if (!assignedCollector) return alert("Please select collector");
+    
+    try {
+      await updateDoc(doc(db, "wasteRequests", requestId), { 
+        assignedCollector,
+        status: "Collector Assigned",
+        collectorAssignedAt: serverTimestamp()
+      });
 
-        if (request) {
-          // Send notification to the user
-          await sendNotification(
-            request.userId, // Assuming the request has a userId field
-            `Your waste request has been deleted.`,
-            { requestId, status: "Deleted" } // Additional data
-          );
-        }
+      setWasteRequests(prev => prev.map(req => 
+        req.id === requestId ? { 
+          ...req, 
+          assignedCollector,
+          status: "Collector Assigned",
+          collectorAssignedAt: new Date().toISOString()
+        } : req
+      ));
 
-        await deleteDoc(doc(db, "wasteRequests", requestId));
-        setWasteRequests(wasteRequests.filter((req) => req.id !== requestId));
-      } catch (error) {
-        console.error("Error deleting waste request:", error);
-        setError("Failed to delete waste request");
+      const request = wasteRequests.find(req => req.id === requestId);
+      if (request) {
+        await sendNotification(
+          request.userId,
+          `Collector assigned to your request`,
+          { requestId, status: "Collector Assigned" }
+        );
+        
+        await sendNotification(
+          assignedCollector,
+          `New collection assigned from ${request.requesterName || "a user"}`,
+          { 
+            requestId, 
+            address: request.address,
+            wasteType: request.wasteType,
+            requesterName: request.requesterName,
+            requesterPhone: request.requesterPhone
+          }
+        );
       }
+      alert("Collector assigned!");
+      setAssignedCollector("");
+    } catch (error) {
+      console.error("Error assigning collector:", error);
     }
   };
 
-  // ✅ Open Details Modal
-  const openDetailsModal = (request) => {
-    setSelectedRequest(request);
+  // User management functions
+  const toggleBanStatus = async (userId, isBanned) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { isBanned: !isBanned });
+      setUsers(prev => prev.map(user => 
+        user.id === userId ? { ...user, isBanned: !isBanned } : user
+      ));
+    } catch (error) {
+      console.error("Error updating ban status:", error);
+    }
   };
 
-  // ✅ Close Details Modal
-  const closeDetailsModal = () => {
-    setSelectedRequest(null);
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { role: newRole });
+      setUsers(prev => prev.map(user => 
+        user.id === userId ? { ...user, role: newRole } : user
+      ));
+      
+      if (newRole === "collector" || newRole === "user") {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        setCollectors(usersSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(user => user.role === "collector")
+        );
+      }
+    } catch (error) {
+      console.error("Error updating role:", error);
+    }
   };
 
-  // ✅ Download Report Function
+  // Helper functions
+  const openDetailsModal = (request) => setSelectedRequest(request);
+  const closeDetailsModal = () => setSelectedRequest(null);
+
   const downloadReport = () => {
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      "Address,Waste Type,Quantity,Status,Pickup Date\n" +
-      wasteRequests
-        .map((request) =>
-          `${request.address},${request.wasteType},${request.quantity},${request.status},${request.pickupDate || "Not Scheduled"}`
-        )
-        .join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," +
+      "Requester Name,Requester Phone,Address,Waste Type,Quantity,Status,Pickup Date,Assigned Collector\n" +
+      wasteRequests.map(request => {
+        return [
+          `"${request.requesterName || ""}"`,
+          `"${request.requesterPhone || ""}"`,
+          `"${request.address || ""}"`,
+          `"${request.wasteType || ""}"`,
+          `"${request.quantity || ""}"`,
+          `"${request.status || ""}"`,
+          `"${request.pickupDate || ""}"`,
+          `"${request.assignedCollector ? users.find(u => u.id === request.assignedCollector)?.name || request.assignedCollector : ''}"`
+        ].join(',');
+      }).join('\n');
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -298,24 +288,29 @@ const AdminDashboard = () => {
     link.click();
   };
 
-  const filteredWasteRequests = wasteRequests.filter((request) => {
-    const address = request.address || ""; // Default to empty string if undefined
-    const wasteType = request.wasteType || ""; // Default to empty string if undefined
-    const status = request.status || ""; // Default to empty string if undefined
-  
+  // Filter and pagination with proper null checks
+  const filteredWasteRequests = wasteRequests.filter(request => {
+    const searchStr = searchQuery.toLowerCase();
+    const requesterName = (request.requesterName || "").toLowerCase();
+    const requesterPhone = (request.requesterPhone || "").toLowerCase();
+    const address = (request.address || "").toLowerCase();
+    const wasteType = (request.wasteType || "").toLowerCase();
+    const collector = request.assignedCollector 
+      ? (users.find(u => u.id === request.assignedCollector)?.name || "").toLowerCase()
+      : "";
+
     return (
-      address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      wasteType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      status.toLowerCase().includes(searchQuery.toLowerCase())
-    ) && (statusFilter === "All" || status === statusFilter);
+      requesterName.includes(searchStr) ||
+      requesterPhone.includes(searchStr) ||
+      address.includes(searchStr) ||
+      wasteType.includes(searchStr) ||
+      collector.includes(searchStr)
+    ) && (statusFilter === "All" || request.status === statusFilter);
   });
 
-  // ✅ Pagination Logic
   const indexOfLastRequest = currentPage * requestsPerPage;
   const indexOfFirstRequest = indexOfLastRequest - requestsPerPage;
   const currentRequests = filteredWasteRequests.slice(indexOfFirstRequest, indexOfLastRequest);
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   if (loading) return <Spinner animation="border" className="d-block mx-auto mt-5" />;
   if (error) return <Alert variant="danger" className="mt-5">{error}</Alert>;
@@ -334,35 +329,41 @@ const AdminDashboard = () => {
               <Card className="shadow-lg">
                 <Card.Body>
                   <Card.Title>Waste Collection Requests</Card.Title>
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by address, waste type, or status..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="mb-3"
-                  />
-                  <Form.Select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="mb-3"
-                  >
-                    <option value="All">All</option>
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Rejected">Rejected</option>
-                  </Form.Select>
-                  <Button variant="secondary" onClick={downloadReport} className="mb-3">
-                    📄 Download Report
-                  </Button>
+                  <div className="d-flex flex-wrap gap-3 mb-3">
+                    <Form.Control
+                      type="text"
+                      placeholder="Search by name, address..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ width: "300px" }}
+                    />
+                    <Form.Select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      style={{ width: "200px" }}
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="Collector Assigned">Collector Assigned</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Completed">Completed</option>
+                    </Form.Select>
+                    <Button variant="secondary" onClick={downloadReport}>
+                      📄 Download Report
+                    </Button>
+                  </div>
+                  
                   <Table striped bordered hover responsive>
                     <thead>
                       <tr>
                         <th>#</th>
+                        <th>Requester</th>
                         <th>Address</th>
                         <th>Waste Type</th>
                         <th>Quantity (kg)</th>
                         <th>Pickup Date</th>
+                        <th>Assigned Collector</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
@@ -371,97 +372,130 @@ const AdminDashboard = () => {
                       {currentRequests.map((request, index) => (
                         <tr key={request.id}>
                           <td>{index + 1}</td>
-                          <td>{request.address}</td>
-                          <td>{request.wasteType}</td>
-                          <td>{request.quantity}</td>
+                          <td>
+                            {request.requesterName || (
+                              <span className="text-muted">Not provided</span>
+                            )}
+                          </td>
+                          <td>{request.address || "-"}</td>
+                          <td>{request.wasteType || "-"}</td>
+                          <td>{request.quantity || "-"}</td>
                           <td>{request.pickupDate || "Not Scheduled"}</td>
                           <td>
-                            <Badge
-                              bg={
-                                request.status === "Pending"
-                                  ? "warning"
-                                  : request.status === "Completed"
-                                  ? "success"
-                                  : request.status === "In Progress"
-                                  ? "primary"
-                                  : "danger"
-                              }
-                            >
+                            {request.assignedCollector ? (
+                              users.find(u => u.id === request.assignedCollector)?.name || 
+                              `Collector (ID: ${request.assignedCollector})`
+                            ) : "Not Assigned"}
+                          </td>
+                          <td>
+                            <Badge bg={
+                              request.status === "Pending" ? "warning" :
+                              request.status === "Completed" ? "success" :
+                              request.status === "In Progress" ? "primary" :
+                              request.status === "Scheduled" || request.status === "Collector Assigned" ? "info" : "danger"
+                            }>
                               {request.status}
                             </Badge>
                           </td>
                           <td>
-                            {/* Status Dropdown */}
-                            <Form.Select
-                              value={request.status}
-                              onChange={(e) => handleWasteStatusChange(request.id, e.target.value)}
-                              className="mb-2"
-                            >
-                              <option value="Pending">Pending</option>
-                              <option value="In Progress">In Progress</option>
-                              <option value="Completed">Completed</option>
-                              <option value="Rejected">Rejected</option>
-                            </Form.Select>
+                            <div className="d-flex flex-column gap-2">
+                              <Form.Select
+                                value={request.status}
+                                onChange={(e) => handleWasteStatusChange(request.id, e.target.value)}
+                                size="sm"
+                              >
+                                <option value="Pending">Pending</option>
+                                <option value="Scheduled">Scheduled</option>
+                                <option value="Collector Assigned">Collector Assigned</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
+                              </Form.Select>
 
-                            {/* Schedule Pickup Button (only for Pending requests) */}
-                            {request.status === "Pending" && (
-                              <>
-                                <Form.Control
-                                  type="date"
-                                  value={pickupDate}
-                                  onChange={(e) => setPickupDate(e.target.value)}
-                                  className="mb-2"
-                                />
+                              {request.status === "Pending" && (
+                                <>
+                                  <Form.Control
+                                    type="date"
+                                    value={pickupDate}
+                                    onChange={(e) => setPickupDate(e.target.value)}
+                                    size="sm"
+                                  />
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => schedulePickup(request.id)}
+                                  >
+                                    🗓️ Schedule Pickup
+                                  </Button>
+                                </>
+                              )}
+
+                              {(request.status === "Scheduled" || request.status === "Collector Assigned") && (
+                                <>
+                                  <Form.Select
+                                    value={assignedCollector}
+                                    onChange={(e) => setAssignedCollector(e.target.value)}
+                                    size="sm"
+                                  >
+                                    <option value="">Select Collector</option>
+                                    {collectors.map(collector => (
+                                      <option key={collector.id} value={collector.id}>
+                                        {collector.name} ({collector.email})
+                                      </option>
+                                    ))}
+                                  </Form.Select>
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    onClick={() => assignCollector(request.id)}
+                                  >
+                                    👷 Assign Collector
+                                  </Button>
+                                </>
+                              )}
+
+                              <div className="d-flex gap-2">
                                 <Button
-                                  variant="primary"
+                                  variant="info"
                                   size="sm"
-                                  onClick={() => schedulePickup(request.id)}
+                                  onClick={() => openDetailsModal(request)}
+                                  className="flex-grow-1"
                                 >
-                                  🗓️ Schedule Pickup
+                                  👁️ Details
                                 </Button>
-                              </>
-                            )}
-
-                            {/* Delete Waste Request Button */}
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => deleteWasteRequest(request.id)}
-                              className="ms-2"
-                            >
-                              🗑️ Delete
-                            </Button>
-
-                            {/* View Details Button */}
-                            <Button
-                              variant="info"
-                              size="sm"
-                              onClick={() => openDetailsModal(request)}
-                              className="ms-2"
-                            >
-                              👁️ View Details
-                            </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (window.confirm("Delete this request?")) {
+                                      deleteDoc(doc(db, "wasteRequests", request.id));
+                                      setWasteRequests(prev => prev.filter(req => req.id !== request.id));
+                                    }
+                                  }}
+                                >
+                                  🗑️ Delete
+                                </Button>
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </Table>
-                  <nav>
-                    <ul className="pagination">
-                      {Array.from({ length: Math.ceil(filteredWasteRequests.length / requestsPerPage) }).map(
-                        (_, index) => (
-                          <li
-                            key={index}
-                            className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                          >
-                            <button className="page-link" onClick={() => paginate(index + 1)}>
-                              {index + 1}
+
+                  {/* Pagination */}
+                  {filteredWasteRequests.length > requestsPerPage && (
+                    <nav>
+                      <ul className="pagination justify-content-center">
+                        {Array.from({ length: Math.ceil(filteredWasteRequests.length / requestsPerPage) }).map((_, i) => (
+                          <li key={i} className={`page-item ${currentPage === i + 1 ? "active" : ""}`}>
+                            <button className="page-link" onClick={() => setCurrentPage(i + 1)}>
+                              {i + 1}
                             </button>
                           </li>
-                        )
-                      )}
-                    </ul>
-                  </nav>
+                        ))}
+                      </ul>
+                    </nav>
+                  )}
                 </Card.Body>
               </Card>
             </Col>
@@ -477,7 +511,6 @@ const AdminDashboard = () => {
                   className="shadow-lg h-100 border-0"
                   style={{ width: "100%", maxWidth: "350px" }}
                 >
-                  {/* Image with margin */}
                   <div
                     style={{
                       height: "200px",
@@ -485,7 +518,7 @@ const AdminDashboard = () => {
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
-                      margin: "15px", // Added margin around image
+                      margin: "15px",
                     }}
                   >
                     <Card.Img
@@ -521,7 +554,6 @@ const AdminDashboard = () => {
                       </Badge>
                     </Card.Text>
 
-                    {/* Improved Button Layout */}
                     <div className="d-flex justify-content-around mt-3">
                       <Button
                         variant="success"
@@ -557,7 +589,7 @@ const AdminDashboard = () => {
           </Row>
         </Tab>
 
-        {/* User Management Tab with Ban/Unban & Role Management */}
+        {/* User Management Tab */}
         <Tab eventKey="users" title="User Management">
           <Card className="shadow-lg">
             <Card.Body>
@@ -568,6 +600,7 @@ const AdminDashboard = () => {
                     <th>#</th>
                     <th>Name</th>
                     <th>Email</th>
+                    <th>Phone</th>
                     <th>Role</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -577,16 +610,21 @@ const AdminDashboard = () => {
                   {users.map((user, index) => (
                     <tr key={user.id}>
                       <td>{index + 1}</td>
-                      <td>{user.name}</td>
+                      <td>
+                        {user.name || user.email.split('@')[0]}
+                        {!user.name && <Badge bg="warning" className="ms-2">No Name</Badge>}
+                      </td>
                       <td>{user.email}</td>
+                      <td>{user.phone || "-"}</td>
                       <td>
                         <Form.Select
                           value={user.role || "user"}
                           onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                          className="form-control"
+                          size="sm"
                         >
                           <option value="user">User</option>
                           <option value="admin">Admin</option>
+                          <option value="collector">Collector</option>
                         </Form.Select>
                       </td>
                       <td>
@@ -612,20 +650,59 @@ const AdminDashboard = () => {
         </Tab>
       </Tabs>
 
-      {/* View Details Modal */}
-      <Modal show={selectedRequest !== null} onHide={closeDetailsModal}>
+      {/* Request Details Modal */}
+      <Modal show={!!selectedRequest} onHide={closeDetailsModal} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Waste Request Details</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {selectedRequest && (
-            <>
-              <p><strong>Address:</strong> {selectedRequest.address}</p>
-              <p><strong>Waste Type:</strong> {selectedRequest.wasteType}</p>
-              <p><strong>Quantity:</strong> {selectedRequest.quantity} kg</p>
-              <p><strong>Status:</strong> {selectedRequest.status}</p>
-              <p><strong>Pickup Date:</strong> {selectedRequest.pickupDate || "Not Scheduled"}</p>
-            </>
+            <Row>
+              <Col md={6}>
+                <h5>Requester Information</h5>
+                <p><strong>Name:</strong> {selectedRequest.requesterName || <span className="text-muted">Not provided</span>}</p>
+                <p><strong>Phone:</strong> {selectedRequest.requesterPhone || <span className="text-muted">Not provided</span>}</p>
+              </Col>
+              <Col md={6}>
+                <h5>Request Details</h5>
+                <p><strong>Address:</strong> {selectedRequest.address || "-"}</p>
+                <p><strong>Waste Type:</strong> {selectedRequest.wasteType || "-"}</p>
+                <p><strong>Quantity:</strong> {selectedRequest.quantity || "-"} kg</p>
+                <p><strong>Pickup Date:</strong> {selectedRequest.pickupDate || "Not Scheduled"}</p>
+                <p>
+                  <strong>Status:</strong>{" "}
+                  <Badge
+                    bg={
+                      selectedRequest.status === "Pending"
+                        ? "warning"
+                        : selectedRequest.status === "Completed"
+                        ? "success"
+                        : selectedRequest.status === "In Progress"
+                        ? "primary"
+                        : selectedRequest.status === "Scheduled" || 
+                          selectedRequest.status === "Collector Assigned"
+                        ? "info"
+                        : "danger"
+                    }
+                  >
+                    {selectedRequest.status}
+                  </Badge>
+                </p>
+                {selectedRequest.assignedCollector && (
+                  <p>
+                    <strong>Assigned Collector:</strong>{" "}
+                    {users.find(u => u.id === selectedRequest.assignedCollector)?.name || 
+                     selectedRequest.assignedCollector}
+                  </p>
+                )}
+              </Col>
+              {selectedRequest.additionalNotes && (
+                <Col xs={12} className="mt-3">
+                  <h5>Additional Notes</h5>
+                  <p>{selectedRequest.additionalNotes}</p>
+                </Col>
+              )}
+            </Row>
           )}
         </Modal.Body>
         <Modal.Footer>
